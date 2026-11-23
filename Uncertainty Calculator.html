@@ -1,0 +1,275 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Uncertainty Calculator</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:#f2f6fc;color:#18243a;min-height:100vh;padding:25px}
+.container{max-width:950px;margin:auto}
+header{text-align:center;margin:15px 0 28px}
+header h1{font-size:2.2rem;color:#2458d3;margin-bottom:9px}
+header p{color:#66748b;line-height:1.5}
+.layout{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.panel{background:white;padding:24px;border-radius:18px;box-shadow:0 6px 24px #172b4d0d}
+h2{font-size:1.15rem;margin-bottom:18px;color:#263b60}
+label{display:block;font-weight:600;font-size:.88rem;margin-bottom:7px;color:#42516a}
+input,select{width:100%;padding:12px;border:1px solid #d8e0ed;border-radius:9px;font-size:1rem;background:#fbfcff;color:#18243a;outline:none}
+input:focus,select:focus{border-color:#4779e8;box-shadow:0 0 0 3px #4779e81a}
+.field{margin-bottom:16px}
+.measurement{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.hint{font-size:.78rem;color:#8490a4;margin-top:6px}
+button{border:0;border-radius:10px;padding:13px 17px;font-weight:700;font-size:.95rem;cursor:pointer;transition:.2s}
+button:hover{transform:translateY(-1px)}
+.primary{background:#285bd6;color:white;width:100%;margin-top:5px}
+.secondary{background:#eaf0ff;color:#285bd6}
+.result{background:linear-gradient(135deg,#edf3ff,#f4f7ff);border:1px solid #dce7ff;border-radius:14px;padding:20px;margin-bottom:17px}
+.result small{color:#64748b;font-weight:600}
+.result h3{font-size:1.9rem;color:#2458d3;margin:9px 0;overflow-wrap:anywhere}
+.result p{color:#64748b;font-size:.9rem}
+.formula{background:#f7f9fc;border-radius:10px;padding:15px;margin-top:12px;line-height:1.7;font-size:.9rem;color:#42516a;overflow-wrap:anywhere}
+.formula strong{color:#263b60}
+.status{font-size:.85rem;margin-top:12px;color:#64748b;line-height:1.5}
+.examples{display:flex;gap:8px;flex-wrap:wrap;margin-top:15px}
+.examples button{font-size:.8rem;padding:9px 12px}
+.info{margin-top:20px;background:#fff;border-radius:14px;padding:20px;line-height:1.7;color:#64748b;font-size:.9rem}
+.info strong{color:#263b60}
+.hidden{display:none}
+@media(max-width:700px){body{padding:15px}.layout{grid-template-columns:1fr}header h1{font-size:1.8rem}.panel{padding:19px}}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1>Uncertainty Calculator</h1>
+<p>Calculate experimental results and propagate measurement uncertainties.</p>
+</header>
+
+<div class="layout">
+<section class="panel">
+<h2>Measurement Inputs</h2>
+
+<div class="field">
+<label for="operation">Mathematical operation</label>
+<select id="operation" onchange="updateInputs()">
+<option value="add">Addition (A + B)</option>
+<option value="subtract">Subtraction (A − B)</option>
+<option value="multiply">Multiplication (A × B)</option>
+<option value="divide">Division (A ÷ B)</option>
+<option value="power">Power (Aⁿ)</option>
+<option value="sqrt">Square root (√A)</option>
+</select>
+</div>
+
+<div class="measurement">
+<div class="field">
+<label for="a">Measurement A</label>
+<input id="a" type="number" step="any" value="10">
+</div>
+<div class="field">
+<label for="da">Uncertainty in A (±)</label>
+<input id="da" type="number" min="0" step="any" value="0.2">
+</div>
+</div>
+
+<div class="measurement" id="secondInput">
+<div class="field">
+<label for="b">Measurement B</label>
+<input id="b" type="number" step="any" value="5">
+</div>
+<div class="field">
+<label for="db">Uncertainty in B (±)</label>
+<input id="db" type="number" min="0" step="any" value="0.1">
+</div>
+</div>
+
+<div class="field hidden" id="powerInput">
+<label for="n">Exponent (n)</label>
+<input id="n" type="number" step="any" value="2">
+<p class="hint">The exponent is treated as an exact constant.</p>
+</div>
+
+<button class="primary" onclick="calculate()">Calculate Uncertainty</button>
+
+<div class="examples">
+<button class="secondary" onclick="loadExample('add')">Addition example</button>
+<button class="secondary" onclick="loadExample('multiply')">Multiplication example</button>
+</div>
+</section>
+
+<section class="panel">
+<h2>Calculated Result</h2>
+<div class="result">
+<small>Result with propagated uncertainty</small>
+<h3 id="answer">15.00 ± 0.22</h3>
+<p id="operationText">Addition of two independent measurements</p>
+</div>
+
+<div class="formula">
+<strong>Calculation details</strong>
+<div id="steps">
+Result = A + B<br>
+Uncertainty = √(ΔA² + ΔB²)
+</div>
+</div>
+<p class="status" id="status">Assuming independent measurements and standard uncertainties.</p>
+</section>
+</div>
+
+<div class="info">
+<strong>How uncertainty propagation works</strong><br>
+• Addition/subtraction: ΔR = √(ΔA² + ΔB²)<br>
+• Multiplication/division: ΔR/|R| = √((ΔA/A)² + (ΔB/B)²)<br>
+• Power: ΔR = |n × Aⁿ⁻¹| × ΔA<br>
+• Square root: ΔR = ΔA / (2√A)<br><br>
+These formulas assume independent measurements and small uncertainties for the multiplication and division approximations. Uncertainties entered here are absolute uncertainties.
+</div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+function updateInputs(){
+const op=$("operation").value;
+$("secondInput").classList.toggle("hidden",op==="power"||op==="sqrt");
+$("powerInput").classList.toggle("hidden",op!=="power");
+}
+
+function format(value){
+if(!Number.isFinite(value)) return "Undefined";
+if(value===0) return "0";
+const abs=Math.abs(value);
+if(abs>=1000000||abs<0.0001) return value.toExponential(4);
+return Number(value.toPrecision(6)).toString();
+}
+
+function calculate(){
+const op=$("operation").value;
+const A=Number($("a").value);
+const dA=Number($("da").value);
+const B=Number($("b").value);
+const dB=Number($("db").value);
+const n=Number($("n").value);
+
+if($("a").value.trim()===""||$("da").value.trim()===""||!Number.isFinite(A)||!Number.isFinite(dA)||dA<0){
+showError("Enter a valid measurement A and a non-negative uncertainty.");
+return;
+}
+
+if((op==="add"||op==="subtract"||op==="multiply"||op==="divide")&&
+($("b").value.trim()===""||$("db").value.trim()===""||!Number.isFinite(B)||!Number.isFinite(dB)||dB<0)){
+showError("Enter a valid measurement B and a non-negative uncertainty.");
+return;
+}
+
+if(op==="power"&&$("n").value.trim()===""){
+showError("Enter a valid exponent.");
+return;
+}
+
+let result,uncertainty,steps,title;
+
+if(op==="add"){
+result=A+B;
+uncertainty=Math.hypot(dA,dB);
+title="Addition of two independent measurements";
+steps=`R = A + B<br>R = ${format(A)} + ${format(B)}<br>ΔR = √(ΔA² + ΔB²)<br>ΔR = √(${format(dA)}² + ${format(dB)}²)`;
+}
+else if(op==="subtract"){
+result=A-B;
+uncertainty=Math.hypot(dA,dB);
+title="Subtraction of two independent measurements";
+steps=`R = A − B<br>R = ${format(A)} − ${format(B)}<br>ΔR = √(ΔA² + ΔB²)<br>ΔR = √(${format(dA)}² + ${format(dB)}²)`;
+}
+else if(op==="multiply"){
+result=A*B;
+if(A===0||B===0){
+if(dA===0&&dB===0) uncertainty=0;
+else{
+showError("Relative uncertainty is undefined for zero-valued measurements. Use a different method or operation.");
+return;
+}
+}else{
+uncertainty=Math.abs(result)*Math.hypot(dA/A,dB/B);
+}
+title="Multiplication of two independent measurements";
+steps=`R = A × B<br>R = ${format(A)} × ${format(B)}<br>ΔR/|R| = √((ΔA/A)² + (ΔB/B)²)<br>ΔR = ${format(uncertainty)}`;
+}
+else if(op==="divide"){
+if(B===0){showError("Division by zero is not allowed.");return;}
+result=A/B;
+if(A===0){
+if(dA===0&&dB===0) uncertainty=0;
+else{
+showError("Relative uncertainty is undefined for a zero numerator. Use a different method.");
+return;
+}
+}else{
+uncertainty=Math.abs(result)*Math.hypot(dA/A,dB/B);
+}
+title="Division of two independent measurements";
+steps=`R = A ÷ B<br>R = ${format(A)} ÷ ${format(B)}<br>ΔR/|R| = √((ΔA/A)² + (ΔB/B)²)<br>ΔR = ${format(uncertainty)}`;
+}
+else if(op==="power"){
+result=Math.pow(A,n);
+uncertainty=Math.abs(n*Math.pow(A,n-1))*dA;
+title="Power of a measured quantity";
+steps=`R = Aⁿ<br>R = ${format(A)}^${format(n)}<br>ΔR = |n × Aⁿ⁻¹| × ΔA<br>ΔR = ${format(uncertainty)}`;
+}
+else{
+if(A<0){showError("Square root of a negative measurement is not real.");return;}
+if(A===0&&dA>0){showError("The uncertainty approximation is undefined at A = 0 when ΔA is nonzero.");return;}
+result=Math.sqrt(A);
+uncertainty=A===0?0:dA/(2*result);
+title="Square root of a measured quantity";
+steps=`R = √A<br>R = √${format(A)}<br>ΔR = ΔA / (2√A)<br>ΔR = ${format(dA)} / (2 × ${format(result)})`;
+}
+
+if(!Number.isFinite(result)||!Number.isFinite(uncertainty)){
+showError("The result is outside the calculator's numerical range.");
+return;
+}
+
+$("answer").textContent=`${format(result)} ± ${format(uncertainty)}`;
+$("operationText").textContent=title;
+$("steps").innerHTML=steps;
+$("status").textContent=`Relative uncertainty: ${result!==0?format(Math.abs(uncertainty/result)*100)+"%":"Undefined for a zero result"}. Assumes independent measurements.`;
+}
+
+function showError(message){
+$("answer").textContent="Check inputs";
+$("operationText").textContent="Calculation could not be completed";
+$("steps").textContent=message;
+$("status").textContent="Please correct the input values and try again.";
+}
+
+function loadExample(type){
+if(type==="add"){
+$("operation").value="add";
+$("a").value=10;
+$("da").value=0.2;
+$("b").value=5;
+$("db").value=0.1;
+}else{
+$("operation").value="multiply";
+$("a").value=4;
+$("da").value=0.1;
+$("b").value=3;
+$("db").value=0.2;
+}
+updateInputs();
+calculate();
+}
+
+["a","da","b","db","n"].forEach(id=>{
+$(id).addEventListener("keydown",event=>{
+if(event.key==="Enter") calculate();
+});
+});
+
+calculate();
+</script>
+</body>
+</html>
